@@ -1,0 +1,36 @@
+{
+    "name": "@kungfu-trader/action-update-dependencies-version",
+    "version": "1.0.0-alpha.0",
+    "repository": "https://github.com/kungfu-trader/action-update-dependencies-version",
+    "author": "Kungfu",
+    "license": "Apache-2.0",
+    "scripts": {
+      "build": "yarn dist",
+      "dist": "ncc build index.ts",
+      "format": "prettier --write --parser typescript \"*.ts\"",
+      "package": "echo noop",
+      "lint": "eslint --ext .ts .",
+      "cli": "yarn ncc build cli.ts --out cli"
+    },
+    "dependencies": {
+      "@actions/core": "^1.8.0",
+      "@actions/github": "^6.0.0",
+      "@octokit/rest": "^19.0.7",
+      "glob": "^10.3.10",
+      "semver": "^7.5.4",
+      "yargs": "^17.7.1"
+    },
+    "devDependencies": {
+      "@ls-lint/ls-lint": "^1.9.0",
+      "@types/glob": "^8.1.0",
+      "@types/node": "^18.15.6",
+      "@types/semver": "^7.5.6",
+      "@typescript-eslint/parser": "^3.10.0",
+      "@vercel/ncc": "^0.34.0",
+      "eslint": "^7.14.0",
+      "prettier": "^2.3.0",
+      "prettier-eslint-cli": "^5.0.0",
+      "typescript": "^5.0.2"
+    }
+  }
+  

@@ -1,0 +1,26 @@
+name: Release - Verify
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - alpha/*/*
+      - release/*/*
+      - main
+
+jobs:
+  try:
+    uses: kungfu-trader/workflows/.github/workflows/.release-verify.yml@v1
+    with:
+      enable-macos: false
+      enable-windows: false
+      prebuild: true
+      publish-versioning: false
+      publish-aws-ci: false
+      publish-aws-user: false
+  
+  verify:
+    needs: try
+    runs-on: ubuntu-20.04
+    steps:
+      - name: report
+        run: echo verified
