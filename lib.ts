@@ -8,18 +8,17 @@ export type argvs = {
   token: string;
   repo?: string;
   repoIncludes?: string;
+  repoInExcludes?: string;
   pullRequestTitle: string;
 };
 
 export async function update(argv: argvs) {
   const isAlpha = argv.pullRequestTitle.includes("-alpha");
   const version = argv.pullRequestTitle.split(" v")[1];
-  if (!version || !isAlpha) {
+  if (!version || isAlpha) {
     return;
   }
-  const repos = argv.repoIncludes
-    ? argv.repoIncludes?.split(",").map((v) => v.trim())
-    : await filterRepos(argv);
+  const repos = await filterRepos(argv);
   const {
     major,
     minor,
@@ -27,13 +26,17 @@ export async function update(argv: argvs) {
     prerelease: [_, alpha],
   } = semver.parse(version)!;
   const ref = (head: string) => `${head}/v${major}/v${major}.${minor}`;
-  for (const repo of repos) {
+  for (const repoName of repos) {
+    console.log(`------------repo ${repoName} match----------`);
     await changeVersion(
       argv.token,
-      repo,
+      repoName,
       ref("dev"),
-      `${major}.${minor}.${patch}`
+      `~${major}.${minor}.0 || ~${major}.${minor}.${
+        isAlpha ? patch : +patch + 1
+      }-0`
     );
+    console.log(`------------repo ${repoName} end----------`);
   }
 }
 
@@ -63,8 +66,16 @@ export async function getReops(argv: argvs): Promise<Map<string, string>> {
 }
 
 const filterRepos = async (argv: argvs) => {
+  const excludes = (argv.repoInExcludes || "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter((v) => !!v);
+  const includes = (argv.repoIncludes || "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter((v) => !!v);
   if (!argv.repo) {
-    return [];
+    return includes;
   }
   const repos = await getReops(argv);
   const rules = {
@@ -72,7 +83,7 @@ const filterRepos = async (argv: argvs) => {
       prefix: "kfx-broker",
     },
     task: {
-      prefix: "kfx-broker",
+      prefix: "kfx-task",
       prefixUi: "kfx-ui",
     },
     trader: {
@@ -89,15 +100,20 @@ const filterRepos = async (argv: argvs) => {
   if (!prefix) {
     return [];
   }
+
   return [...repos.keys()].filter((repoName: string) => {
+    if (excludes.includes(repoName)) {
+      return false;
+    }
+    if (includes.length > 0 && !includes.includes(repoName)) {
+      return false;
+    }
     if (prefix === "kungfu") {
       return ["kungfu-license", "kungfu"].includes(repoName);
-    } else {
-      return (
-        repoName.startsWith(prefix) ||
-        (prefixUi && repoName.startsWith(prefixUi))
-      );
     }
+    return (
+      repoName.startsWith(prefix) || (prefixUi && repoName.startsWith(prefixUi))
+    );
   });
 };
 
@@ -111,42 +127,69 @@ async function changeVersion(
     auth: token,
   });
   const lerna = await getGithubFile(octokit, repo, branch, "lerna.json");
-  if (!lerna) {
-    return;
-  }
   const deps = getPkgNameMap();
-  for (const element of lerna.content?.packages || []) {
+  for (const element of lerna?.content?.packages || []) {
     const folder = element.replace("/*", "");
     const menu = await getGithubMenu(octokit, repo, branch, folder);
     for (const child of menu || []) {
-      const pkg = await getGithubFile(
+      await updatePackageJson({
         octokit,
         repo,
         branch,
-        `${folder}/${child}/package.json`
-      );
-      if (pkg) {
-        let count = 0;
-        const { content, sha } = pkg;
-        ["dependencies", "devDependencies"].forEach((item) => {
-          deps.forEach((dep) => {
-            if (content[item]?.[dep]) {
-              content[item][dep] = `~${version} || ~${version}-0`;
-              count += 1;
-            }
-          });
-        });
-        count > 0 &&
-          (await updateGithubFile(
-            octokit,
-            repo,
-            branch,
-            `${folder}/${child}/package.json`,
-            format(content),
-            sha
-          ));
-      }
+        version,
+        deps,
+        address: `${folder}/${child}/package.json`,
+      });
     }
+  }
+  await updatePackageJson({
+    octokit,
+    repo,
+    branch,
+    version,
+    deps,
+    address: `package.json`,
+  });
+}
+
+async function updatePackageJson({
+  octokit,
+  repo,
+  branch,
+  address,
+  version,
+  deps,
+}: {
+  octokit: any;
+  repo: string;
+  branch: string;
+  address: string;
+  version: string;
+  deps: string[];
+}) {
+  const pkg = await getGithubFile(octokit, repo, branch, address);
+  if (pkg) {
+    let count = 0;
+    const { content, sha } = pkg;
+    ["dependencies", "devDependencies", "resolutions"].forEach((item) => {
+      deps.forEach((dep: string) => {
+        if (content[item]?.[dep] && content[item]?.[dep] !== version) {
+          content[item][dep] = version;
+          count += 1;
+        }
+      });
+    });
+    console.log(`--- ${address} ${count}changed ---`);
+    count > 0 && console.log(content);
+    count > 0 &&
+      (await updateGithubFile(
+        octokit,
+        repo,
+        branch,
+        address,
+        format(content),
+        sha
+      ));
   }
 }
 

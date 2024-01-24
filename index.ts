@@ -7,6 +7,7 @@ const main = async function () {
     token: getInput("token"),
     repo: getInput("repo"),
     repoIncludes: getInput("repo-includes"),
+    repoInExcludes: getInput("repo-excludes"),
     pullRequestTitle: context.payload?.pull_request?.title,
   };
   await update(argv);

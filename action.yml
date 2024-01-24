@@ -11,6 +11,9 @@ inputs:
   repo-includes:
     description: "repoIncludes"
     require: false
+  repo-excludes:
+    description: "repo excludes. Use, separate"
+    require: false
 runs:
   using: "node16"
   main: "dist/index.js"
