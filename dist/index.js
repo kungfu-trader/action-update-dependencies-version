@@ -40032,6 +40032,7 @@ exports.getReops = exports.update = void 0;
 const rest_1 = __nccwpck_require__(5375);
 const semver_1 = __importDefault(__nccwpck_require__(1383));
 const fs_1 = __importDefault(__nccwpck_require__(7147));
+const os_1 = __importDefault(__nccwpck_require__(2037));
 const path_1 = __importDefault(__nccwpck_require__(1017));
 const glob = __importStar(__nccwpck_require__(8211));
 async function update(argv) {
@@ -40165,10 +40166,11 @@ async function updatePackageJson({ octokit, repo, branch, address, version, deps
                 }
             });
         });
-        console.log(`--- ${address} ${count}changed ---`);
-        count > 0 && console.log(content);
-        count > 0 &&
-            (await updateGithubFile(octokit, repo, branch, address, format(content), sha));
+        console.log(`--- ${address} has ${count} changed ---`);
+        if (count > 0) {
+            console.log(content);
+            await updateGithubFile(octokit, repo, branch, address, format(content), sha);
+        }
     }
 }
 async function getGithubFile(octokit, repo, ref, path) {
@@ -40202,6 +40204,7 @@ async function updateGithubFile(octokit, repo, ref, path, content, sha) {
         branch: ref,
         headers: {
             "X-GitHub-Api-Version": "2022-11-28",
+            accept: "application/vnd.github+json",
         },
     })
         .catch((e) => console.error(e));
@@ -40242,7 +40245,7 @@ const getPkgNameMap = () => {
     return [config.name];
 };
 function format(str) {
-    return Buffer.from(JSON.stringify(str, null, 4), "utf-8").toString("base64");
+    return Buffer.from(JSON.stringify(str, null, 2) + os_1.default.EOL, "utf-8").toString("base64");
 }
 
 

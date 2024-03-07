@@ -1,6 +1,7 @@
 import { Octokit } from "@octokit/rest";
 import semver from "semver";
 import fs from "fs";
+import os from "os";
 import path from "path";
 import * as glob from "glob";
 
@@ -179,17 +180,18 @@ async function updatePackageJson({
         }
       });
     });
-    console.log(`--- ${address} ${count}changed ---`);
-    count > 0 && console.log(content);
-    count > 0 &&
-      (await updateGithubFile(
+    console.log(`--- ${address} has ${count} changed ---`);
+    if (count > 0) {
+      console.log(content);
+      await updateGithubFile(
         octokit,
         repo,
         branch,
         address,
         format(content),
         sha
-      ));
+      );
+    }
   }
 }
 
@@ -239,6 +241,7 @@ async function updateGithubFile(
       branch: ref,
       headers: {
         "X-GitHub-Api-Version": "2022-11-28",
+        accept: "application/vnd.github+json",
       },
     })
     .catch((e: any) => console.error(e));
@@ -290,5 +293,7 @@ const getPkgNameMap = (): string[] => {
 };
 
 function format(str: any) {
-  return Buffer.from(JSON.stringify(str, null, 4), "utf-8").toString("base64");
+  return Buffer.from(JSON.stringify(str, null, 2) + os.EOL, "utf-8").toString(
+    "base64"
+  );
 }
